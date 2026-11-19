@@ -1,5 +1,5 @@
 /* Offline-Cache. Netzwerk zuerst (damit Updates sofort ankommen), sonst aus dem Cache. */
-const V = "timer-v1";
+const V = "sprawl-v2";
 const FILES = ["./", "index.html", "manifest.json", "icons/icon-192.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
