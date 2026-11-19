@@ -46,5 +46,5 @@ Mobil-first Intervall-Timer als Web-App. Eine Datei `index.html` (HTML/CSS/JS, k
 ## Nächste Schritte
 1. Auf dem echten iPhone testen (Home-Bildschirm, Stummschalter, Stimme, Wake Lock).
 2. Sound-Bibliothek und Zuordnung pro Ereignis.
-3. Bewerten-Button (Formspree oder Supabase).
+3. Bewerten-Button fertig (Formspree, Formular xaeobkjp, Mails an Goat).
 4. Hintergrund-Problem bei ausgeschaltetem Bildschirm.

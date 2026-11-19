@@ -495,7 +495,7 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "slotName") document.querySelector("[data-ok]").click(); });
 /* ---------- Bewerten (Formspree) ---------- */
-const FS = ""; // Formspree-Formular-ID, z. B. "xyzabcde"
+const FS = "xaeobkjp"; // Formspree-Formular-ID, z. B. "xyzabcde"
 let stars = 0;
 const rate = $("#rate");
 const setStars = n => { stars = n; document.querySelectorAll("#stars button").forEach(b => { const on = +b.dataset.star <= n; b.classList.toggle("on", on); b.setAttribute("aria-checked", +b.dataset.star === n); }); };
