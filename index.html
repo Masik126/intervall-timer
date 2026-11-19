@@ -1,5 +1,10 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E4D6BA">
 <title>Intervall-Timer</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
 <style>
@@ -15,8 +20,10 @@
   --bg:#0C0C0E; --surface:#16161A; --line:#2A2A31; --ink:#ECE7DC; --muted:#8C877D;
   --accent:#7E9DD8; --accent-ink:#0C0C0E; --spurt:#E2793A; color-scheme:dark;
 }
-html,body{min-height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;transition:background-color .12s}
+[hidden]{display:none!important}
+html,body{min-height:100%;margin:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
 body.flash{--bg:var(--alarm)}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
 button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -24,7 +31,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 
 .app{max-width:520px;margin:0 auto;padding-block:0 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
 
-.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;gap:8px;padding-block:12px 8px;transition:background-color .12s}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;gap:8px;padding-block:12px 8px}
 .tab{flex:1;border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:10px 12px;font-family:var(--f-num);font-weight:700;font-size:17px;letter-spacing:.06em;text-transform:uppercase}
 .tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
 
@@ -43,7 +50,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .cmd{min-height:52px;font-family:var(--f-num);font-weight:800;font-size:44px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
 .cmd.pop{animation:pop .5s ease-out}
 @keyframes pop{from{transform:scale(1.35)}to{transform:scale(1)}}
-@media (prefers-reduced-motion:reduce){.cmd.pop{animation:none}body,.tabs{transition:none}}
+@media (prefers-reduced-motion:reduce){.cmd.pop{animation:none}}
 
 .ctrls{display:grid;grid-template-columns:1fr 2fr 1fr;gap:10px;width:100%;margin-top:4px}
 .btn{border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:14px 10px;font-family:var(--f-num);font-weight:700;font-size:18px;letter-spacing:.06em;text-transform:uppercase}
@@ -56,7 +63,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .row label,.row .lbl{font-weight:500}
 .stepper{display:flex;align-items:center;gap:6px}
-.stepper button{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line);background:var(--bg);font-size:22px;line-height:1;display:grid;place-items:center;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.stepper button{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line);background:var(--bg);font-size:22px;line-height:1;display:grid;place-items:center;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .stepper output{min-width:64px;text-align:center;font-family:var(--f-num);font-weight:700;font-size:26px;font-variant-numeric:tabular-nums}
 
 .seg{display:flex;border:1.5px solid var(--line);border-radius:999px;padding:3px;gap:3px;background:var(--bg)}
@@ -91,6 +98,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .slot-edit .ok{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .toast{text-align:center;font-size:13px;color:var(--muted);min-height:18px;margin:0}
 </style>
+</head>
+<body>
 
 <div class="app" id="app">
   <nav class="tabs" role="tablist">
@@ -123,8 +132,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <section class="card" id="card-wrestling">
       <h2>Kommandos</h2>
       <div class="seg" id="seg-style">
-        <button data-v="normal">Normal (Stimme)</button>
-        <button data-v="kryptisch">Kryptisch (Klatschen)</button>
+        <button data-v="normal">Normal</button>
+        <button data-v="kryptisch">Kryptisch</button>
       </div>
       <div class="seg" id="seg-level">
         <button data-v="easy">Beginner</button>
@@ -197,6 +206,8 @@ const cur = () => S[S.mode];
 let ac, noise;
 function ensureAudio() {
   try {
+    /* iPhone: ohne das schaltet der Stumm-Schalter die Töne komplett aus (Safari 17+) */
+    if (navigator.audioSession) navigator.audioSession.type = "playback";
     if (!ac) {
       ac = new (window.AudioContext || window.webkitAudioContext)();
       noise = ac.createBuffer(1, ac.sampleRate * 0.3, ac.sampleRate);
@@ -255,8 +266,8 @@ function buildPhases() {
   }
   return p;
 }
-function enter(i) {
-  run.i = i; run.t0 = performance.now(); run.acc = 0; run.lastRem = null; run.fired = 0; run.spurt = false;
+function enter(i, over = 0) {
+  run.i = i; run.t0 = performance.now() - over * 1000; run.acc = 0; run.lastRem = null; run.fired = 0; run.spurt = false;
   const ph = run.phases[i], c = cur();
   run.marks = ph.type === "work" && S.mode === "classic" ? markersFor(c, ph.round) : [];
   run.nextCmd = 1 + gap(c.level);
@@ -268,15 +279,23 @@ function issueCmd(el) {
   let busy;
   if (c.style === "kryptisch") { for (let k = 0; k < n; k++) clap(k * 0.28); busy = n * 0.28 + 0.2; }
   else { say(name); const el2 = $("#cmd"); el2.textContent = name; el2.classList.remove("pop"); void el2.offsetWidth; el2.classList.add("pop"); busy = 0.9; clearTimeout(run.cmdT); run.cmdT = setTimeout(() => { el2.textContent = ""; }, 1300); }
-  run.nextCmd = el + busy + gap(c.level);
+  /* Abstand zählt von Kommando zu Kommando, nur nie kürzer als das Sprechen/Klatschen selbst */
+  run.nextCmd = el + Math.max(busy, gap(c.level));
 }
 function flash() { document.body.classList.add("flash"); setTimeout(() => document.body.classList.remove("flash"), 450); }
 function tick() {
   if (!run || run.paused) return;
-  const ph = run.phases[run.i], el = run.acc + (performance.now() - run.t0) / 1000;
+  let ph = run.phases[run.i], el = run.acc + (performance.now() - run.t0) / 1000;
+  /* Phase vorbei: Überhang mitnehmen, damit nach Bildschirm-aus keine Zeit verloren geht */
   if (el >= ph.dur) {
-    if (ph.type === "work") SND.end();
-    if (run.i + 1 < run.phases.length) enter(run.i + 1); else finish();
+    let end = false;
+    while (el >= ph.dur) {
+      if (ph.type === "work") end = true;
+      if (run.i + 1 >= run.phases.length) { if (end) SND.end(); return finish(); }
+      const over = el - ph.dur;
+      enter(run.i + 1, over); ph = run.phases[run.i]; el = over;
+    }
+    if (end) SND.end();
     return;
   }
   const rem = ph.dur - el, remS = Math.ceil(rem);
@@ -329,6 +348,7 @@ function stop() {
 }
 function finish() {
   clearInterval(loop); SND.done(); run = null;
+  try { wake && wake.release(); } catch (e) {}
   setRunning(false); render();
   $("#phase").textContent = "Fertig"; $("#sub").textContent = "Starke Einheit.";
 }
@@ -348,6 +368,7 @@ function render() {
   document.documentElement.dataset.look = dark ? "dark" : "light";
   document.documentElement.style.colorScheme = dark ? "dark" : "light";
   document.body.classList.toggle("dark", dark);
+  $('meta[name="theme-color"]').content = dark ? "#0C0C0E" : "#E4D6BA";
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.mode === S.mode));
   $("#card-wrestling").hidden = !w; $("#card-markers").hidden = w;
   $("#v-work").textContent = fmt(c.work); $("#v-rest").textContent = fmt(c.rest); $("#v-rounds").textContent = c.rounds;
@@ -366,8 +387,11 @@ function setSeg(sel, v) { document.querySelectorAll(sel + " button").forEach(b =
 function renderPatterns(c) {
   const block = (key, title, desc) => {
     const list = c[key];
+    /* Spurt/Locker nach zeitlicher Reihenfolge, nicht nach Eingabe-Reihenfolge */
+    const ord = list.map((m, i) => [m, i]).sort((x, y) => x[0] - y[0] || x[1] - y[1]).map(x => x[1]);
+    const sp = i => ord.indexOf(i) % 2 === 0;
     return `<div class="pattern"><div class="pattern-head"><strong>${title}</strong><span class="hint">${desc}</span></div>` +
-      (list.length ? list.map((m, i) => `<div class="mk"><span class="tag ${i % 2 === 0 ? "sp" : ""}">${i % 2 === 0 ? "Spurt ab" : "Locker ab"}</span>
+      (list.length ? list.map((m, i) => `<div class="mk"><span class="tag ${sp(i) ? "sp" : ""}">${sp(i) ? "Spurt ab" : "Locker ab"}</span>
         <div class="stepper"><button data-k="m:${key}:${i}" data-d="-5" aria-label="Früher">−</button><output>${fmt(m)}</output><button data-k="m:${key}:${i}" data-d="5" aria-label="Später">+</button></div>
         <button class="x" data-del="${key}:${i}" aria-label="Marker löschen">×</button></div>`).join("") : `<p class="hint">Keine Marker. Die Runde läuft durch.</p>`) +
       `<button class="add" data-add="${key}">+ Marker</button></div>`;
@@ -433,3 +457,5 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 
 render();
 </script>
+</body>
+</html>
