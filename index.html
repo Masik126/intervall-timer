@@ -104,6 +104,16 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .slot-edit button{border:1.5px solid var(--line);background:transparent;border-radius:12px;padding:10px 12px;font-weight:600;font-size:14px}
 .slot-edit .ok{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .toast{text-align:center;font-size:13px;color:var(--muted);min-height:18px;margin:0}
+
+dialog{box-sizing:border-box;width:min(480px,calc(100vw - 32px));border:1px solid var(--line);border-radius:20px;padding:20px;background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog form{display:flex;flex-direction:column;gap:10px;margin:0}
+dialog h2{margin:0 0 4px;font-family:var(--f-num);font-weight:700;font-size:24px;letter-spacing:.02em}
+.stars{display:flex;justify-content:center;gap:4px}
+.stars button{border:0;background:transparent;font-size:40px;line-height:1;padding:4px;color:var(--line);touch-action:manipulation}
+.stars button.on{color:var(--spurt)}
+dialog textarea,dialog input{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;resize:vertical}
+.rate-btns{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -171,8 +181,32 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       <div class="slots" id="slots"></div>
       <p class="toast" id="toast"></p>
     </section>
+
+    <section class="card">
+      <h2>Feedback</h2>
+      <p class="hint">Was fehlt, was nervt, was ist geil? Sag's mir.</p>
+      <button class="btn" id="btnRate">Bewerten</button>
+    </section>
   </div>
 </div>
+
+<dialog id="rate" aria-labelledby="rate-h">
+  <form method="dialog" id="rateForm">
+    <h2 id="rate-h">Wie findest du den Timer?</h2>
+    <div class="stars" id="stars" role="radiogroup" aria-label="Sterne">
+      <button type="button" role="radio" data-star="1" aria-label="1 Stern">★</button><button type="button" role="radio" data-star="2" aria-label="2 Sterne">★</button><button type="button" role="radio" data-star="3" aria-label="3 Sterne">★</button><button type="button" role="radio" data-star="4" aria-label="4 Sterne">★</button><button type="button" role="radio" data-star="5" aria-label="5 Sterne">★</button>
+    </div>
+    <label for="rateTxt" class="lbl">Verbesserungsvorschläge</label>
+    <textarea id="rateTxt" rows="4" maxlength="2000" placeholder="z. B. eigener Sound für Rundenende, mehr Kommandos …"></textarea>
+    <label for="rateName" class="lbl">Name <span class="hint">(optional)</span></label>
+    <input id="rateName" maxlength="40" autocomplete="nickname">
+    <p class="hint" id="rateMsg" role="status"></p>
+    <div class="rate-btns">
+      <button type="button" class="btn" id="rateCancel">Abbrechen</button>
+      <button type="button" class="btn primary" id="rateSend">Senden</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -460,6 +494,33 @@ document.addEventListener("click", e => {
   else if (t.id === "btnTest") { ensureAudio(); const [n, k] = CMDS[Math.floor(Math.random() * 4)]; if (c.style === "kryptisch") { for (let i = 0; i < k; i++) clap(i * 0.28); toast(k + "× geklatscht = " + n); } else { say(n); toast(n); } }
 });
 document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "slotName") document.querySelector("[data-ok]").click(); });
+/* ---------- Bewerten (Formspree) ---------- */
+const FS = ""; // Formspree-Formular-ID, z. B. "xyzabcde"
+let stars = 0;
+const rate = $("#rate");
+const setStars = n => { stars = n; document.querySelectorAll("#stars button").forEach(b => { const on = +b.dataset.star <= n; b.classList.toggle("on", on); b.setAttribute("aria-checked", +b.dataset.star === n); }); };
+$("#btnRate").onclick = () => { setStars(0); $("#rateMsg").textContent = ""; $("#rateSend").disabled = false; rate.showModal(); };
+$("#stars").onclick = e => { const b = e.target.closest("[data-star]"); if (b) setStars(+b.dataset.star); };
+$("#rateCancel").onclick = () => rate.close();
+$("#rateForm").onsubmit = e => e.preventDefault();
+$("#rateSend").onclick = async () => {
+  const txt = $("#rateTxt").value.trim(), msg = $("#rateMsg");
+  if (!stars && !txt) { msg.textContent = "Gib Sterne oder schreib was."; return; }
+  if (!FS) { msg.textContent = "Feedback ist noch nicht eingerichtet."; return; }
+  let last = 0; try { last = +localStorage.getItem("itimer.rated") || 0; } catch (e) {}
+  if (Date.now() - last < 60000) { msg.textContent = "Kurz warten, du hast gerade schon was geschickt."; return; }
+  $("#rateSend").disabled = true; msg.textContent = "Sende …";
+  try {
+    const r = await fetch("https://formspree.io/f/" + FS, {
+      method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ sterne: stars || "keine", text: txt, name: $("#rateName").value.trim(), modus: modeName(S.mode), geraet: navigator.userAgent })
+    });
+    if (!r.ok) throw 0;
+    try { localStorage.setItem("itimer.rated", Date.now()); } catch (e) {}
+    $("#rateTxt").value = ""; rate.close(); toast("Danke für dein Feedback!");
+  } catch (e) { msg.textContent = "Senden hat nicht geklappt. Bist du online?"; $("#rateSend").disabled = false; }
+};
+
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && run && !run.paused) lockScreen(); });
 
 render();
