@@ -1,0 +1,435 @@
+<title>Intervall-Timer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: eine Spalte fürs Handy. Oben Pillen-Tabs, darunter die große Uhr, darunter Einstellungen und Slots. */
+:root{
+  --bg:#E4D6BA; --surface:#EEE4CF; --line:#CBB994; --ink:#1F1B15; --muted:#6A5F4C;
+  --accent:#1E4C8A; --accent-ink:#F3EDE1; --spurt:#C4521A; --alarm:#D0231B;
+  --f-num:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+:root[data-look="dark"],body.dark{
+  --bg:#0C0C0E; --surface:#16161A; --line:#2A2A31; --ink:#ECE7DC; --muted:#8C877D;
+  --accent:#7E9DD8; --accent-ink:#0C0C0E; --spurt:#E2793A; color-scheme:dark;
+}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;transition:background-color .12s}
+body.flash{--bg:var(--alarm)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{max-width:520px;margin:0 auto;padding-block:0 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;gap:8px;padding-block:12px 8px;transition:background-color .12s}
+.tab{flex:1;border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:10px 12px;font-family:var(--f-num);font-weight:700;font-size:17px;letter-spacing:.06em;text-transform:uppercase}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+
+.clock{display:flex;flex-direction:column;align-items:center;gap:6px;padding-block:8px 4px;text-align:center}
+.phase{font-family:var(--f-num);font-weight:700;font-size:20px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.clock.work .phase{color:var(--accent)}
+.clock.spurt .phase{color:var(--spurt)}
+.time{font-family:var(--f-num);font-weight:800;font-size:clamp(96px,32vw,168px);line-height:.88;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.sub{font-family:var(--f-num);font-weight:600;font-size:19px;letter-spacing:.04em;color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{position:relative;width:100%;height:10px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
+.fill{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent);border-radius:99px}
+.clock.spurt .fill{background:var(--spurt)}
+.clock.rest .fill,.clock.prep .fill{background:var(--muted)}
+.tick{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--spurt)}
+.zone{position:absolute;top:0;bottom:0;background:var(--spurt);opacity:.28}
+.cmd{min-height:52px;font-family:var(--f-num);font-weight:800;font-size:44px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.cmd.pop{animation:pop .5s ease-out}
+@keyframes pop{from{transform:scale(1.35)}to{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.cmd.pop{animation:none}body,.tabs{transition:none}}
+
+.ctrls{display:grid;grid-template-columns:1fr 2fr 1fr;gap:10px;width:100%;margin-top:4px}
+.btn{border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:14px 10px;font-family:var(--f-num);font-weight:700;font-size:18px;letter-spacing:.06em;text-transform:uppercase}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-size:22px}
+.btn:disabled{opacity:.35;cursor:default}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.card h2{margin:0;font-family:var(--f-num);font-weight:700;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.hint{margin:0;font-size:13px;color:var(--muted)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.row label,.row .lbl{font-weight:500}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line);background:var(--bg);font-size:22px;line-height:1;display:grid;place-items:center;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.stepper output{min-width:64px;text-align:center;font-family:var(--f-num);font-weight:700;font-size:26px;font-variant-numeric:tabular-nums}
+
+.seg{display:flex;border:1.5px solid var(--line);border-radius:999px;padding:3px;gap:3px;background:var(--bg)}
+.seg button{flex:1;border:0;background:transparent;border-radius:999px;padding:9px 6px;font-weight:600;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+
+.legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.legend div{display:flex;align-items:center;gap:8px;font-size:14px}
+.dots{display:inline-flex;gap:3px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--ink)}
+
+.pattern{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:12px}
+.pattern-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.pattern-head strong{font-family:var(--f-num);font-size:19px;letter-spacing:.04em}
+.mk{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mk .tag{font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--bg);border:1px solid var(--line);white-space:nowrap}
+.mk .tag.sp{color:var(--spurt);border-color:var(--spurt)}
+.x{border:0;background:transparent;color:var(--muted);font-size:20px;width:34px;height:34px}
+.add{align-self:flex-start;border:1.5px dashed var(--line);background:transparent;border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px}
+
+.slots{display:flex;flex-direction:column;gap:8px}
+.slot{display:flex;align-items:stretch;gap:8px}
+.slot-load{flex:1;min-width:0;text-align:left;border:1.5px solid var(--line);background:var(--bg);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column}
+.slot-load:disabled{cursor:default}
+.slot-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot-empty .slot-name{color:var(--muted);font-weight:500}
+.slot-meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.slot-save{border:1.5px solid var(--ink);background:transparent;border-radius:14px;padding:0 14px;font-weight:600;font-size:14px}
+.slot-edit{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+.slot-edit input{flex:1 1 180px;min-width:0;border:1.5px solid var(--accent);border-radius:12px;padding:10px 12px;font:inherit;background:var(--bg);color:var(--ink)}
+.slot-edit button{border:1.5px solid var(--line);background:transparent;border-radius:12px;padding:10px 12px;font-weight:600;font-size:14px}
+.slot-edit .ok{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.toast{text-align:center;font-size:13px;color:var(--muted);min-height:18px;margin:0}
+</style>
+
+<div class="app" id="app">
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-classic" data-mode="classic">Klassisch</button>
+    <button class="tab" role="tab" id="tab-wrestling" data-mode="wrestling">Wrestling Mode</button>
+  </nav>
+
+  <section class="clock" id="clock" aria-live="polite">
+    <div class="phase" id="phase">Bereit</div>
+    <div class="time" id="time">3:00</div>
+    <div class="sub" id="sub"></div>
+    <div class="bar"><div class="fill" id="fill"></div><div id="ticks"></div></div>
+    <div class="cmd" id="cmd"></div>
+    <div class="ctrls">
+      <button class="btn" id="btnStop" disabled>Stopp</button>
+      <button class="btn primary" id="btnMain">Start</button>
+      <button class="btn" id="btnSkip" disabled>Weiter</button>
+    </div>
+  </section>
+
+  <div id="settings" style="display:flex;flex-direction:column;gap:16px">
+    <section class="card">
+      <h2>Zeiten</h2>
+      <div class="row"><span class="lbl">Runde</span><div class="stepper"><button data-k="work" data-d="-5" aria-label="Runde kürzer">−</button><output id="v-work"></output><button data-k="work" data-d="5" aria-label="Runde länger">+</button></div></div>
+      <div class="row"><span class="lbl">Pause</span><div class="stepper"><button data-k="rest" data-d="-5" aria-label="Pause kürzer">−</button><output id="v-rest"></output><button data-k="rest" data-d="5" aria-label="Pause länger">+</button></div></div>
+      <div class="row"><span class="lbl">Runden</span><div class="stepper"><button data-k="rounds" data-d="-1" aria-label="Weniger Runden">−</button><output id="v-rounds"></output><button data-k="rounds" data-d="1" aria-label="Mehr Runden">+</button></div></div>
+      <p class="hint">Gedrückt halten zum schnellen Verstellen.</p>
+    </section>
+
+    <section class="card" id="card-wrestling">
+      <h2>Kommandos</h2>
+      <div class="seg" id="seg-style">
+        <button data-v="normal">Normal (Stimme)</button>
+        <button data-v="kryptisch">Kryptisch (Klatschen)</button>
+      </div>
+      <div class="seg" id="seg-level">
+        <button data-v="easy">Beginner</button>
+        <button data-v="mid">Intermediate</button>
+        <button data-v="hard">Expert</button>
+      </div>
+      <p class="hint" id="level-hint"></p>
+      <div class="legend" id="legend"></div>
+      <button class="add" id="btnTest">Kommando testen</button>
+    </section>
+
+    <section class="card" id="card-markers">
+      <h2>Marker</h2>
+      <p class="hint">Jeder Marker gibt einen Sound und schaltet um: erst Spurt, dann wieder locker, dann wieder Spurt.</p>
+      <div>
+        <div class="lbl" style="margin-bottom:8px;font-weight:500">Muster A gilt für</div>
+        <div class="seg" id="seg-every">
+          <button data-v="1">Jede Runde</button>
+          <button data-v="2">Jede 2.</button>
+          <button data-v="3">Jede 3.</button>
+        </div>
+      </div>
+      <div id="patterns"></div>
+    </section>
+
+    <section class="card">
+      <h2>Speicherslots</h2>
+      <div class="slots" id="slots"></div>
+      <p class="toast" id="toast"></p>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmt = s => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+const CMDS = [["Shoot", 1], ["Sprawl", 2], ["Downblock", 3], ["Jump", 4]];
+const LEVEL = { easy: [2.5, 4], mid: [2, 3], hard: [1.2, 2.6] };
+const LEVEL_TXT = { easy: "Mindestens 2,5 Sekunden Abstand, meist bis 4, ab und zu länger.", mid: "Mindestens 2 Sekunden Abstand, meist bis 3, ab und zu länger.", hard: "Mindestens 1,2 Sekunden Abstand, meist bis 2,6, ab und zu länger." };
+/* Zufälliger Abstand: nie unter dem Minimum, meist im Bereich, manchmal eine längere Pause, damit kein Rhythmus entsteht. */
+function gap(level) {
+  const [a, b] = LEVEL[level || "mid"];
+  let g = a + (b - a) * Math.random();
+  if (Math.random() < 0.2) g += rnd(0.5, (b - a) + 2);
+  return g;
+}
+const MAX_SLOTS = 10;
+
+const DEFAULT = {
+  mode: "classic",
+  classic: { work: 180, rest: 60, rounds: 6, every: 2, a: [120, 150], b: [] },
+  wrestling: { work: 120, rest: 45, rounds: 5, style: "normal", level: "mid" },
+  slots: [
+    { name: "Boxpratzen (Beispiel)", mode: "classic", cfg: { work: 180, rest: 60, rounds: 6, every: 2, a: [120, 150], b: [] } },
+    { name: "Matte Reaktion (Beispiel)", mode: "wrestling", cfg: { work: 120, rest: 45, rounds: 5, style: "normal", level: "mid" } },
+    null, null, null
+  ]
+};
+
+let S = clone(DEFAULT);
+try { const raw = localStorage.getItem("itimer.v1"); if (raw) S = Object.assign(clone(DEFAULT), JSON.parse(raw)); } catch (e) {}
+const save = () => { try { localStorage.setItem("itimer.v1", JSON.stringify(S)); } catch (e) {} };
+const cur = () => S[S.mode];
+
+/* ---------- Audio ---------- */
+let ac, noise;
+function ensureAudio() {
+  try {
+    if (!ac) {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      noise = ac.createBuffer(1, ac.sampleRate * 0.3, ac.sampleRate);
+      const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (ac.state === "suspended") ac.resume();
+  } catch (e) {}
+}
+function tone(f, dur, o = {}) {
+  if (!ac) return;
+  const t = ac.currentTime + (o.at || 0), osc = ac.createOscillator(), g = ac.createGain();
+  osc.type = o.type || "sine"; osc.frequency.setValueAtTime(f, t);
+  if (o.glide) osc.frequency.exponentialRampToValueAtTime(o.glide, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.vol || 0.3, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(ac.destination); osc.start(t); osc.stop(t + dur + 0.05);
+}
+function bell(at = 0) { [[540, 1], [1080, .5], [1620, .3], [2300, .15]].forEach(([f, a]) => tone(f, 1.5, { vol: 0.32 * a, at })); }
+function clap(at = 0) {
+  if (!ac) return;
+  [0, 0.011, 0.023].forEach((off, i) => {
+    const t = ac.currentTime + at + off, src = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = noise; bp.type = "bandpass"; bp.frequency.value = 1300; bp.Q.value = 0.9;
+    const len = i === 2 ? 0.14 : 0.02;
+    g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    src.connect(bp).connect(g).connect(ac.destination); src.start(t); src.stop(t + len + 0.02);
+  });
+}
+const SND = {
+  start: () => bell(),
+  end: () => { bell(0); bell(0.32); bell(0.64); },
+  beep: () => tone(900, 0.2, { type: "square", vol: 0.16 }),
+  tick: () => tone(660, 0.1, { vol: 0.22 }),
+  ready: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.28, { type: "triangle", vol: 0.3, at: i * 0.12 })),
+  spurt: () => [0, 0.11, 0.22].forEach(a => tone(1250, 0.08, { type: "square", vol: 0.18, at: a })),
+  easy: () => { tone(720, 0.3, { vol: 0.28 }); tone(470, 0.45, { vol: 0.28, at: 0.25 }); },
+  done: () => [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.5, { type: "triangle", vol: 0.28, at: i * 0.15 }))
+};
+let voice = null;
+function pickVoice() { try { const v = speechSynthesis.getVoices(); voice = v.find(x => /^en(-|_)US/i.test(x.lang)) || v.find(x => /^en/i.test(x.lang)) || null; } catch (e) {} }
+try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch (e) {}
+function say(t) {
+  try { const u = new SpeechSynthesisUtterance(t); u.lang = "en-US"; if (voice) u.voice = voice; u.rate = 1.1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+}
+
+/* ---------- Timer ---------- */
+let run = null, loop = null, wake = null;
+const markersFor = (c, round) => {
+  const list = (c.every === 1 || (round - 1) % c.every === 0) ? c.a : c.b;
+  return list.filter(m => m < c.work).sort((x, y) => x - y);
+};
+function buildPhases() {
+  const c = cur(), p = [{ type: "prep", dur: 10 }];
+  for (let r = 1; r <= c.rounds; r++) {
+    p.push({ type: "work", dur: c.work, round: r });
+    if (r < c.rounds && c.rest > 0) p.push({ type: "rest", dur: c.rest, round: r });
+  }
+  return p;
+}
+function enter(i) {
+  run.i = i; run.t0 = performance.now(); run.acc = 0; run.lastRem = null; run.fired = 0; run.spurt = false;
+  const ph = run.phases[i], c = cur();
+  run.marks = ph.type === "work" && S.mode === "classic" ? markersFor(c, ph.round) : [];
+  run.nextCmd = 1 + gap(c.level);
+  if (ph.type === "work") SND.start();
+  drawTicks();
+}
+function issueCmd(el) {
+  const c = cur(), [name, n] = CMDS[Math.floor(Math.random() * CMDS.length)];
+  let busy;
+  if (c.style === "kryptisch") { for (let k = 0; k < n; k++) clap(k * 0.28); busy = n * 0.28 + 0.2; }
+  else { say(name); const el2 = $("#cmd"); el2.textContent = name; el2.classList.remove("pop"); void el2.offsetWidth; el2.classList.add("pop"); busy = 0.9; clearTimeout(run.cmdT); run.cmdT = setTimeout(() => { el2.textContent = ""; }, 1300); }
+  run.nextCmd = el + busy + gap(c.level);
+}
+function flash() { document.body.classList.add("flash"); setTimeout(() => document.body.classList.remove("flash"), 450); }
+function tick() {
+  if (!run || run.paused) return;
+  const ph = run.phases[run.i], el = run.acc + (performance.now() - run.t0) / 1000;
+  if (el >= ph.dur) {
+    if (ph.type === "work") SND.end();
+    if (run.i + 1 < run.phases.length) enter(run.i + 1); else finish();
+    return;
+  }
+  const rem = ph.dur - el, remS = Math.ceil(rem);
+  if (remS !== run.lastRem) {
+    run.lastRem = remS;
+    if (ph.type === "work" && remS <= 5) { SND.beep(); flash(); }
+    if ((ph.type === "rest" || ph.type === "prep") && remS === 5) SND.ready();
+    if ((ph.type === "rest" || ph.type === "prep") && remS <= 3) SND.tick();
+  }
+  while (run.fired < run.marks.length && el >= run.marks[run.fired]) {
+    run.fired++; run.spurt = run.fired % 2 === 1;
+    run.spurt ? SND.spurt() : SND.easy();
+  }
+  if (ph.type === "work" && S.mode === "wrestling" && el >= run.nextCmd && rem > 1.5) issueCmd(el);
+  drawRun(ph, el, rem);
+}
+function drawRun(ph, el, rem) {
+  const clock = $("#clock"), c = cur();
+  clock.className = "clock " + ph.type + (run.spurt ? " spurt" : "");
+  $("#phase").textContent = { prep: "Gleich geht's los", work: run.spurt ? "Spurt" : "Runde", rest: "Pause" }[ph.type];
+  $("#time").textContent = fmt(rem);
+  const r = ph.round || 1;
+  $("#sub").textContent = ph.type === "prep" ? c.rounds + " Runden" : ph.type === "rest" ? "Nächste: Runde " + (r + 1) + " von " + c.rounds : "Runde " + r + " von " + c.rounds;
+  $("#fill").style.width = (el / ph.dur * 100) + "%";
+}
+function drawTicks(marks, dur) {
+  const box = $("#ticks");
+  if (marks === undefined) { const ph = run && run.phases[run.i]; marks = run ? run.marks : []; dur = ph ? ph.dur : 1; }
+  let h = "";
+  for (let k = 0; k < marks.length; k += 2) {
+    const a = marks[k] / dur * 100, b = (k + 1 < marks.length ? marks[k + 1] : dur) / dur * 100;
+    h += `<span class="zone" style="left:${a}%;width:${b - a}%"></span>`;
+  }
+  marks.forEach(m => h += `<span class="tick" style="left:${m / dur * 100}%"></span>`);
+  box.innerHTML = h;
+}
+async function lockScreen() { try { wake = await navigator.wakeLock.request("screen"); } catch (e) {} }
+function start() {
+  ensureAudio();
+  if (S.mode === "wrestling" && cur().style === "normal") say(" ");
+  if (!run) { run = { phases: buildPhases() }; enter(0); }
+  else if (run.paused) { run.paused = false; run.t0 = performance.now(); }
+  clearInterval(loop); loop = setInterval(tick, 50); lockScreen();
+  setRunning(true);
+}
+function pause() { run.acc += (performance.now() - run.t0) / 1000; run.paused = true; try { speechSynthesis.cancel(); } catch (e) {} setRunning(true); }
+function stop() {
+  clearInterval(loop); run = null; try { speechSynthesis.cancel(); wake && wake.release(); } catch (e) {}
+  document.body.classList.remove("flash"); setRunning(false); render();
+}
+function finish() {
+  clearInterval(loop); SND.done(); run = null;
+  setRunning(false); render();
+  $("#phase").textContent = "Fertig"; $("#sub").textContent = "Starke Einheit.";
+}
+function skip() { if (!run) return; if (run.i + 1 < run.phases.length) { if (run.paused) run.paused = false; enter(run.i + 1); } else finish(); }
+function setRunning(on) {
+  $("#settings").hidden = on;
+  $("#btnStop").disabled = !on; $("#btnSkip").disabled = !on;
+  $("#btnMain").textContent = !on ? "Start" : run && run.paused ? "Weiter" : "Pause";
+  document.querySelectorAll(".tab").forEach(t => t.disabled = on);
+}
+
+/* ---------- Rendering ---------- */
+let editSlot = -1;
+function render() {
+  const c = cur(), w = S.mode === "wrestling";
+  const dark = w && c.style === "kryptisch";
+  document.documentElement.dataset.look = dark ? "dark" : "light";
+  document.documentElement.style.colorScheme = dark ? "dark" : "light";
+  document.body.classList.toggle("dark", dark);
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.mode === S.mode));
+  $("#card-wrestling").hidden = !w; $("#card-markers").hidden = w;
+  $("#v-work").textContent = fmt(c.work); $("#v-rest").textContent = fmt(c.rest); $("#v-rounds").textContent = c.rounds;
+  if (!run) {
+    $("#clock").className = "clock"; $("#phase").textContent = "Bereit"; $("#time").textContent = fmt(c.work);
+    $("#sub").textContent = c.rounds + " Runden · " + fmt(c.rest) + " Pause"; $("#fill").style.width = "0"; $("#cmd").textContent = "";
+    drawTicks(w ? [] : markersFor(c, 1), c.work);
+  }
+  if (w) {
+    setSeg("#seg-style", c.style); setSeg("#seg-level", c.level); $("#level-hint").textContent = LEVEL_TXT[c.level];
+    $("#legend").innerHTML = CMDS.map(([n, k]) => `<div><span class="dots">${"<i></i>".repeat(k)}</span>${c.style === "kryptisch" ? k + "× = " : ""}${n}</div>`).join("");
+  } else { setSeg("#seg-every", String(c.every)); renderPatterns(c); }
+  renderSlots();
+}
+function setSeg(sel, v) { document.querySelectorAll(sel + " button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v)); }
+function renderPatterns(c) {
+  const block = (key, title, desc) => {
+    const list = c[key];
+    return `<div class="pattern"><div class="pattern-head"><strong>${title}</strong><span class="hint">${desc}</span></div>` +
+      (list.length ? list.map((m, i) => `<div class="mk"><span class="tag ${i % 2 === 0 ? "sp" : ""}">${i % 2 === 0 ? "Spurt ab" : "Locker ab"}</span>
+        <div class="stepper"><button data-k="m:${key}:${i}" data-d="-5" aria-label="Früher">−</button><output>${fmt(m)}</output><button data-k="m:${key}:${i}" data-d="5" aria-label="Später">+</button></div>
+        <button class="x" data-del="${key}:${i}" aria-label="Marker löschen">×</button></div>`).join("") : `<p class="hint">Keine Marker. Die Runde läuft durch.</p>`) +
+      `<button class="add" data-add="${key}">+ Marker</button></div>`;
+  };
+  const n = c.every;
+  let h = block("a", "Muster A", n === 1 ? "alle Runden" : "Runde 1, " + (1 + n) + ", " + (1 + 2 * n) + " …");
+  if (n > 1) h += block("b", "Muster B", "alle Runden dazwischen");
+  $("#patterns").innerHTML = h;
+}
+const modeName = m => m === "wrestling" ? "Wrestling" : "Klassisch";
+function renderSlots() {
+  $("#slots").innerHTML = S.slots.map((s, i) => {
+    if (i === editSlot) return `<div class="slot"><div class="slot-edit"><input id="slotName" maxlength="30" placeholder="Name, z. B. Boxpratzen" value="${s ? esc(s.name.replace(" (Beispiel)", "")) : ""}">
+      <button class="ok" data-ok="${i}">Speichern</button><button data-cancel>Abbrechen</button>${s ? `<button data-clear="${i}">Leeren</button>` : ""}</div></div>`;
+    const meta = s ? `${modeName(s.mode)} · ${fmt(s.cfg.work)} / ${fmt(s.cfg.rest)} · ${s.cfg.rounds} Runden` : "Aktuelle Einstellung hier ablegen";
+    return `<div class="slot ${s ? "" : "slot-empty"}"><button class="slot-load" data-load="${i}" ${s ? "" : "disabled"}><span class="slot-name">${s ? esc(s.name) : "Slot " + (i + 1) + " frei"}</span><span class="slot-meta">${meta}</span></button>
+      <button class="slot-save" data-save="${i}">${s ? "Überschreiben" : "Speichern"}</button></div>`;
+  }).join("") + (S.slots.length < MAX_SLOTS ? `<button class="add" data-addslot>+ Slot</button>` : "");
+}
+function toast(t) { $("#toast").textContent = t; clearTimeout(toast.t); toast.t = setTimeout(() => $("#toast").textContent = "", 2500); }
+
+/* ---------- Eingaben ---------- */
+function adjust(k, d) {
+  const c = cur();
+  if (k.startsWith("m:")) { const [, key, i] = k.split(":"); c[key][i] = Math.min(Math.max(5, c[key][i] + d), c.work - 5); }
+  else {
+    const lim = { work: [5, 3600], rest: [0, 900], rounds: [1, 50] }[k];
+    c[k] = Math.min(Math.max(lim[0], c[k] + d), lim[1]);
+  }
+  save(); render();
+}
+let hold;
+document.addEventListener("pointerdown", e => {
+  const b = e.target.closest("[data-k]"); if (!b) return;
+  e.preventDefault(); const k = b.dataset.k, d = +b.dataset.d; adjust(k, d);
+  clearTimeout(hold); hold = setTimeout(function rep() { adjust(k, d); hold = setTimeout(rep, 70); }, 380);
+});
+["pointerup", "pointercancel", "pointerleave"].forEach(ev => document.addEventListener(ev, () => clearTimeout(hold)));
+document.addEventListener("keydown", e => { const b = e.target.closest && e.target.closest("[data-k]"); if (b && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); adjust(b.dataset.k, +b.dataset.d); } });
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("button"); if (!t) return;
+  const c = cur(), ds = t.dataset;
+  if (ds.mode) { S.mode = ds.mode; editSlot = -1; save(); render(); }
+  else if (t.closest("#seg-style")) { c.style = ds.v; save(); render(); }
+  else if (t.closest("#seg-level")) { c.level = ds.v; save(); render(); }
+  else if (t.closest("#seg-every")) { c.every = +ds.v; save(); render(); }
+  else if (ds.add) { const l = c[ds.add], last = l.length ? l[l.length - 1] : Math.floor(c.work / 2) - 15; l.push(Math.min(last + 15, c.work - 5)); save(); render(); }
+  else if (ds.del) { const [key, i] = ds.del.split(":"); c[key].splice(+i, 1); save(); render(); }
+  else if (ds.load !== undefined) { const s = S.slots[+ds.load]; S.mode = s.mode; S[s.mode] = clone(s.cfg); save(); render(); toast("„" + s.name + "“ geladen"); }
+  else if (ds.save !== undefined) { editSlot = +ds.save; renderSlots(); const inp = $("#slotName"); inp && inp.focus(); }
+  else if (ds.ok !== undefined) { const name = $("#slotName").value.trim() || "Slot " + (+ds.ok + 1); S.slots[+ds.ok] = { name, mode: S.mode, cfg: clone(c) }; editSlot = -1; save(); render(); toast("„" + name + "“ gespeichert"); }
+  else if (ds.cancel !== undefined) { editSlot = -1; renderSlots(); }
+  else if (ds.clear !== undefined) { S.slots[+ds.clear] = null; editSlot = -1; save(); renderSlots(); }
+  else if (ds.addslot !== undefined) { S.slots.push(null); save(); renderSlots(); }
+  else if (t.id === "btnMain") { !run ? start() : run.paused ? start() : pause(); }
+  else if (t.id === "btnStop") stop();
+  else if (t.id === "btnSkip") skip();
+  else if (t.id === "btnTest") { ensureAudio(); const [n, k] = CMDS[Math.floor(Math.random() * 4)]; if (c.style === "kryptisch") { for (let i = 0; i < k; i++) clap(i * 0.28); toast(k + "× geklatscht = " + n); } else { say(n); toast(n); } }
+});
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "slotName") document.querySelector("[data-ok]").click(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && run && !run.paused) lockScreen(); });
+
+render();
+</script>
