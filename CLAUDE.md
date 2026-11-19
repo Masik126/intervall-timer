@@ -37,6 +37,11 @@ Mobil-first Intervall-Timer als Web-App. Eine Datei `index.html` (HTML/CSS/JS, k
 
 - PWA fertig: manifest.json, icons/, favicon.png, sw.js (Offline-Cache, Netzwerk zuerst). Bei Änderungen an der Dateiliste in sw.js die Version `V` hochzählen.
 
+## Design
+- Richtung "Präzisionsinstrument": Fortschrittsring (SVG, Spurt-Zonen drauf), Rundenpunkte, Icon-Buttons, iOS-artige Umschalter, Karten ohne harte Ränder, Toast unten.
+- Phasenfarben: Runde Blau, Spurt Orange, Pause Grün, Vorlauf Gold. Blinken: alles Weiß auf Rot.
+- Keine Farb-Transitions (wirken beim Moduswechsel matschig), nur Druck-Animation.
+
 ## Hosting
 - Live: https://masik126.github.io/intervall-timer/
 - Repo: https://github.com/Masik126/intervall-timer (öffentlich, GitHub Pages aus `main`, Root). Pushen auf main = veröffentlichen.
