@@ -35,8 +35,16 @@ Mobil-first Intervall-Timer als Web-App. Eine Datei `index.html` (HTML/CSS/JS, k
 - Fertig: Tabs, Zeiten mit Plus/Minus (gedrückt halten = schnell), Marker mit Muster A/B, Countdown-Piep und rotes Blinken, Get-Ready-Sound, Wrestling Normal/Kryptisch mit Dark Mode, drei Stufen mit zufälligen Abständen, Speicherslots in localStorage (5, erweiterbar bis 10), Wake Lock.
 - Offen: echte Sounds und Sound-Zuordnung, Bewerten-Button, PWA-Manifest und Icon, Hosting auf GitHub Pages, Hintergrund-Problem (Töne laufen bei ausgeschaltetem Bildschirm auf dem iPhone nicht zuverlässig).
 
+- PWA fertig: manifest.json, icons/, favicon.png, sw.js (Offline-Cache, Netzwerk zuerst). Bei Änderungen an der Dateiliste in sw.js die Version `V` hochzählen.
+
+## Hosting
+- Live: https://masik126.github.io/intervall-timer/
+- Repo: https://github.com/Masik126/intervall-timer (öffentlich, GitHub Pages aus `main`, Root). Pushen auf main = veröffentlichen.
+- gh CLI liegt unter `~/.local/bin/gh` (eingeloggt als Masik126). Git-Autor im Repo: GitHub-noreply-Adresse.
+- Lokal testen: Der Preview-Server darf den Desktop nicht lesen (macOS-Datenschutz), daher Dateien in einen Session-Ordner kopieren und von dort ausliefern.
+
 ## Nächste Schritte
-1. CLAUDE.md anlegen, git init. (erledigt)
-2. index.html lokal testen (auch Handy-Größe), alle Bugs fixen, besonders: schaltet Kryptisch wirklich auf Dark Mode um?
-3. PWA (manifest.json, Icon, apple-touch-icon), damit sie auf dem iPhone-Home-Bildschirm wie eine App aussieht.
-4. Auf GitHub Pages veröffentlichen, Link an Goat.
+1. Auf dem echten iPhone testen (Home-Bildschirm, Stummschalter, Stimme, Wake Lock).
+2. Sound-Bibliothek und Zuordnung pro Ereignis.
+3. Bewerten-Button (Formspree oder Supabase).
+4. Hintergrund-Problem bei ausgeschaltetem Bildschirm.
